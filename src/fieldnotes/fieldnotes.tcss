@@ -1,0 +1,195 @@
+Screen {
+    layout: vertical;
+}
+
+TitleBar {
+    height: 1;
+    padding: 0 1;
+    background: $panel;
+}
+
+StatusLine {
+    height: 1;
+    padding: 0 1 0 0;
+    background: $panel;
+}
+
+StatusLine > .status-line--normal {
+    background: $success;
+    color: $background;
+    text-style: bold;
+}
+
+StatusLine > .status-line--filter {
+    background: $warning;
+    color: $background;
+    text-style: bold;
+}
+
+StatusLine > .status-line--detail {
+    background: $primary;
+    color: $foreground;
+    text-style: bold;
+}
+
+StatusLine > .status-line--confirm {
+    background: $error;
+    color: $background;
+    text-style: bold;
+}
+
+HintBar {
+    height: auto;
+    padding: 0 1;
+    background: $surface;
+}
+
+HintBar > .hint-bar--key {
+    color: $accent;
+    text-style: bold;
+}
+
+HintBar > .hint-bar--description {
+    color: $foreground;
+}
+
+HintBar > .hint-bar--disabled {
+    color: $text-disabled;
+}
+
+/* Narrow: the panels stack and the body scrolls. */
+Body {
+    height: 1fr;
+    layout: vertical;
+    overflow-y: auto;
+}
+
+Panel {
+    height: auto;
+    padding: 0 1;
+    border: round $border-blurred;
+    border-title-color: $text-muted;
+    border-title-style: bold;
+    border-subtitle-color: $warning;
+
+    &:focus-within {
+        border: round $border;
+        border-title-color: $accent;
+    }
+
+    & > .message {
+        display: none;
+        height: auto;
+    }
+
+    &.-has-message > .message {
+        display: block;
+    }
+
+    & > ItemList {
+        height: auto;
+        max-height: 16;
+        background: transparent;
+
+        /* A quiet cursor that keeps each row's own colors. */
+        & > .option-list--option-highlighted {
+            color: $foreground;
+            background: $boost;
+            text-style: none;
+        }
+
+        &:focus > .option-list--option-highlighted {
+            color: $foreground;
+            background: $accent 22%;
+            text-style: none;
+        }
+    }
+
+    & > FilterInput {
+        display: none;
+    }
+
+    &.-filtering > FilterInput {
+        display: block;
+    }
+}
+
+/* Wide: two columns; very wide: three. Placement follows the panel order:
+   usage, CI, topics, tasks, librarian. */
+DashboardScreen.-wide Body,
+DashboardScreen.-very-wide Body {
+    layout: grid;
+    grid-rows: 1fr;
+    grid-gutter: 0 1;
+    overflow-y: hidden;
+}
+
+DashboardScreen.-wide Body {
+    grid-size: 2 6;
+}
+
+DashboardScreen.-very-wide Body {
+    grid-size: 3 4;
+}
+
+DashboardScreen.-wide Panel,
+DashboardScreen.-very-wide Panel {
+    height: 100%;
+}
+
+DashboardScreen.-wide Panel > ItemList,
+DashboardScreen.-very-wide Panel > ItemList {
+    height: 1fr;
+    max-height: 100%;
+}
+
+DashboardScreen.-wide #usage {
+    row-span: 4;
+}
+
+DashboardScreen.-wide #ci,
+DashboardScreen.-wide #topics,
+DashboardScreen.-wide #tasks,
+DashboardScreen.-wide #librarian {
+    row-span: 2;
+}
+
+/* Usage over tasks, CI the full height, topics over the librarian. */
+DashboardScreen.-very-wide Panel {
+    row-span: 2;
+}
+
+DashboardScreen.-very-wide #ci {
+    row-span: 4;
+}
+
+#detail {
+    height: 1fr;
+    padding: 0 2;
+}
+
+#detail-title {
+    margin: 1 0;
+}
+
+.detail-heading {
+    margin-top: 1;
+}
+
+ConfirmScreen {
+    align: center middle;
+}
+
+#dialog {
+    width: 72;
+    max-width: 100%;
+    height: auto;
+    padding: 1 2;
+    border: thick $error;
+    background: $panel;
+}
+
+#confirm-bars {
+    dock: bottom;
+    height: auto;
+}

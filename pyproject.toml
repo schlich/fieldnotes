@@ -1,0 +1,30 @@
+[project]
+name = "fieldnotes"
+version = "0.1.0"
+description = "A terminal dashboard for coding-agent usage, CI, topics waiting to land, and background tasks"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+# Keep the major version in step with nixpkgs' python3Packages.textual.
+dependencies = ["textual>=8.2,<9"]
+
+[project.scripts]
+fieldnotes = "fieldnotes.app:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+extend-select = ["I", "UP", "B", "SIM"]
