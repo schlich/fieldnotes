@@ -215,6 +215,7 @@ def settings(tmp_path: Path) -> Settings:
         ci_repo="example/repo",
         tangled_repo_url="https://tangled.example/@someone/repo",
         tasks_dir=tmp_path / "tasks",
+        jev_log=tmp_path / "jev" / "usage.jsonl",
         iwe_root=tmp_path / "kb",
     )
 

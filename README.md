@@ -16,7 +16,7 @@ full Textual app that works the same over SSH.
 
 | #   | Panel            | Shows                                                                                                   | Source                                |
 | --- | ---------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| 1   | Provider windows | Each usage window, colored by pace: points ahead of or behind an even burn through the window           | `ai-usagebar usage --json`            |
+| 1   | Provider windows | Each usage window, colored by pace: points ahead of or behind an even burn through the window; Jev's tokens and requests over 24h and 7d, flagged when rate-limited | `ai-usagebar usage --json`, `$FIELDNOTES_JEV_LOG` |
 | 2   | CI               | Each workflow's verdict on main with its failure streak, and failing or running runs on live branches   | `gh api` (GitHub Actions)             |
 | 3   | Waiting to land  | Published `jj-*` topics that have not reached main, oldest first; over two days old is highlighted      | Tangled knot XRPC                     |
 | 4   | Background tasks | This host's agent background tasks and the reports other hosts push, with silent hosts flagged          | `$FIELDNOTES_TASKS_DIR/*.json`        |
@@ -84,11 +84,26 @@ the same name overrides it (`fieldnotes --ci-repo owner/repo`).
 | `FIELDNOTES_TANGLED_REPO_DID` | the dotfiles repository's DID                     | Repository on that knot                  |
 | `FIELDNOTES_TANGLED_REPO_URL` | `https://tangled.org/@schlich.tngl.sh/dotfiles`   | Web page for opening a topic's changes   |
 | `FIELDNOTES_TASKS_DIR`        | `$XDG_STATE_HOME/fieldnotes/agent-tasks`          | Background task records                  |
+| `FIELDNOTES_JEV_LOG`          | `$XDG_STATE_HOME/jev/usage.jsonl`                 | Jev usage ledger                         |
 | `FIELDNOTES_IWE_ROOT`         | `~/kb`                                            | IWE knowledge base                       |
 | `FIELDNOTES_POLL_SECONDS`     | `30` (at least 5)                                 | Refresh interval for the remote sources  |
 
 Provider credentials and `gh` authentication belong to the account running
 the dashboard.
+
+### Jev usage ledger
+
+TypeSafe reports token usage on each response but has no account usage API,
+so the `jev` client appends one JSON line per response, and the panel sums
+the trailing day and week:
+
+```json
+{ "at": "2026-10-15T22:12:16-05:00", "command": "bash-guard", "model": "jev-1", "status": 200, "input_tokens": 296, "output_tokens": 20 }
+```
+
+Without a plan limit there is no meter or pace; a row turns yellow when the
+window holds a 429 or another failed response. Without the file, Jev rows
+are left out.
 
 ### Background task records
 

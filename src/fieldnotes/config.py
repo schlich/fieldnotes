@@ -11,9 +11,16 @@ from pathlib import Path
 from fieldnotes import __version__
 
 
+def state_home(environ: Mapping[str, str]) -> Path:
+    return Path(environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state"))
+
+
 def default_tasks_dir(environ: Mapping[str, str]) -> Path:
-    state = environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
-    return Path(state) / "fieldnotes" / "agent-tasks"
+    return state_home(environ) / "fieldnotes" / "agent-tasks"
+
+
+def default_jev_log(environ: Mapping[str, str]) -> Path:
+    return state_home(environ) / "jev" / "usage.jsonl"
 
 
 @dataclass(frozen=True)
@@ -38,6 +45,10 @@ class Settings:
         default_factory=lambda: default_tasks_dir(os.environ),
         metadata={"help": "background task records: this host's own and other hosts' reports"},
     )
+    jev_log: Path = field(
+        default_factory=lambda: default_jev_log(os.environ),
+        metadata={"help": "ledger of Jev responses whose token usage the provider panel sums"},
+    )
     iwe_root: Path = field(
         default_factory=lambda: Path("~/kb").expanduser(),
         metadata={"help": "IWE knowledge base the librarian panel reads"},
@@ -49,7 +60,10 @@ class Settings:
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] = os.environ) -> Settings:
-        values: dict[str, object] = {"tasks_dir": default_tasks_dir(environ)}
+        values: dict[str, object] = {
+            "tasks_dir": default_tasks_dir(environ),
+            "jev_log": default_jev_log(environ),
+        }
         for item in fields(cls):
             raw = environ.get(f"FIELDNOTES_{item.name.upper()}")
             if raw:
@@ -58,7 +72,7 @@ class Settings:
 
 
 def convert(name: str, raw: str) -> object:
-    if name.endswith(("_dir", "_root")):
+    if name.endswith(("_dir", "_root", "_log")):
         return Path(raw).expanduser()
     if name == "poll_seconds":
         return max(5.0, float(raw))

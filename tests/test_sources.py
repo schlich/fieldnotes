@@ -2,9 +2,10 @@ import json
 from datetime import timedelta
 from pathlib import Path
 
+import pytest
 from conftest import ci_runs, ci_state, knot_branches, knot_main_log, usage_json
 
-from fieldnotes.model import now
+from fieldnotes.model import SourceError, now
 from fieldnotes.sources.ci import CISource, excerpt, failed_logs, summarize, workflow_header
 from fieldnotes.sources.librarian import (
     LibrarianSource,
@@ -16,7 +17,17 @@ from fieldnotes.sources.librarian import (
 )
 from fieldnotes.sources.tasks import TasksSource, home_relative, load_tasks
 from fieldnotes.sources.topics import TopicsSource, pending_topics
-from fieldnotes.sources.usage import Problem, UsageSource, Window, pace_label, parse
+from fieldnotes.sources.usage import (
+    Ledger,
+    Problem,
+    UsageSource,
+    Window,
+    count,
+    ledger_windows,
+    pace_label,
+    parse,
+    read_ledger,
+)
 
 # Usage
 
@@ -43,6 +54,85 @@ def test_pace_label_names_the_direction():
     assert pace_label(3) == "on track"
     assert pace_label(12.4) == "12 pts ahead"
     assert pace_label(-30) == "30 pts behind"
+
+
+def write_ledger(path: Path) -> None:
+    """jev's ledger: two answers today, a 429 today, one answer three days
+    ago, one too old to count, and a torn line."""
+
+    def entry(hours_ago: float, status: int, tokens: tuple[int, int]) -> str:
+        return json.dumps(
+            {
+                "at": (now() - timedelta(hours=hours_ago)).isoformat(),
+                "command": "bash-guard",
+                "model": "jev-1",
+                "status": status,
+                "input_tokens": tokens[0],
+                "output_tokens": tokens[1],
+            }
+        )
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        entry(1, 200, (296, 20)),
+        entry(2, 200, (1000, 40)),
+        entry(3, 429, (0, 0)),
+        entry(72, 200, (5000, 100)),
+        entry(24 * 9, 200, (99999, 1)),
+        '{"at": "2026-10-',
+    ]
+    path.write_text("\n".join(lines) + "\n")
+
+
+def test_ledger_windows_sum_tokens_and_count_refusals(tmp_path):
+    path = tmp_path / "usage.jsonl"
+    write_ledger(path)
+    at = now()
+    day, week = ledger_windows("Jev", path, read_ledger(path, at), at)
+    assert (day.label, day.requests, day.tokens, day.limited, day.failed) == ("24h", 3, 1356, 1, 0)
+    assert (week.label, week.requests, week.input_tokens, week.output_tokens) == (
+        "7d",
+        4,
+        6296,
+        160,
+    )
+    assert read_ledger(tmp_path / "missing.jsonl", at) is None
+
+
+def test_count_is_compact():
+    assert [count(n) for n in (950, 12_345, 4_100_000)] == ["950", "12.3k", "4.1M"]
+
+
+def test_usage_adds_jev_rows_between_windows_and_problems(settings, monkeypatch):
+    write_ledger(settings.jev_log)
+    monkeypatch.setattr("fieldnotes.sources.usage.capture_json", lambda command, **_: usage_json())
+    source = UsageSource(settings)
+    data = source.fetch()
+    assert [type(entry) for entry in data] == [Window] * 3 + [Ledger] * 2 + [Problem]
+    rows = {row.key: row for row in source.items(data)}
+    assert rows["Jev/24h"].status == "1.4k tok"
+    assert rows["Jev/24h"].state == "warn"
+    assert rows["Jev/24h"].lines[0].startswith("3 requests · 1 rate-limited · last ")
+    assert rows["Jev/24h"].meter is None
+    assert rows["Jev/7d"].status == "6.5k tok"
+    assert source.detail(rows["Jev/7d"]).fields[3] == ("Tokens", "6,456 (6,296 in, 160 out)")
+
+
+def test_usage_keeps_jev_rows_when_ai_usagebar_fails(settings, monkeypatch):
+    def fail(command, **_):
+        raise SourceError("ai-usagebar is not installed")
+
+    monkeypatch.setattr("fieldnotes.sources.usage.capture_json", fail)
+    source = UsageSource(settings)
+    # Without a ledger, the panel itself shows the error.
+    with pytest.raises(SourceError):
+        source.fetch()
+
+    write_ledger(settings.jev_log)
+    data = source.fetch()
+    assert [type(entry) for entry in data] == [Ledger, Ledger, Problem]
+    assert data[-1].provider == "ai-usagebar"
+    assert source.summary(data) == ("Jev rate-limited 1× in 24h", "warn")
 
 
 # CI
